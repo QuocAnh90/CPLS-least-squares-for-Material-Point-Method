@@ -1,6 +1,6 @@
-function[v_ssp,x_sp,d_sp,F_sp,V_sp,s_sp,p_sp] = MPM_solver(CModel,CModel_parameter,...
-    nodeCount,spCount,cellCount,x_sp,x_spo,d_sp,le,NN,LOC,b_sp,V_sp,ptraction_sp,v_ssp,s_sp,m_sp,p_sp,lp,...
-    nfbcx,nfbcy,fbcx,fbcy,F_sp,V_spo,dt)
+function[gridmomentum,particlemomentum,v_ssp,x_sp,d_sp,F_sp,V_sp,s_sp,p_sp] = MPM_solver(CModel,CModel_parameter,...
+    nodeCount,spCount,cellCount,x_sp,x_spo,d_sp,le,NN,LOC,b_sp,V_sp,ptraction_sp,v_ssp,s_sp,m_sp,p_sp,...
+    nfbcx,nfbcy,fbcx,fbcy,F_sp,V_spo,dt,gridmomentum,particlemomentum)
 
 %% Store particles into cell
 [N,dN,CONNECT,spElems,mspoints,NODES] = Compute_Interpolator_MPM(spCount,cellCount,x_sp,le,NN,LOC);
@@ -21,6 +21,20 @@ function[v_ssp,x_sp,d_sp,F_sp,V_sp,s_sp,p_sp] = MPM_solver(CModel,CModel_paramet
 % neforce_si: nodal external force
 % traction_si: nodal traction
 
+momentumgrid = 0;
+% for n = 1:nodeCount
+%     momentumgrid = momentumgrid + abs(nmomentum_si(n,1));
+% end
+momentumparticle = 0;
+% for p = 1:spCount
+% %     mo = mo + v_ssp(p,:).*m_sp(p,:);
+%     momentumparticle = momentumparticle + abs(v_ssp(p,1).*m_sp(p,1));
+% end
+% 
+% gridmomentum = [gridmomentum momentumgrid];
+% particlemomentum = [particlemomentum momentumparticle];
+
+
 %% Update momentum
 % Update force and momentum
  nforce_si      = niforce_si + neforce_si + traction_si;
@@ -31,17 +45,29 @@ function[v_ssp,x_sp,d_sp,F_sp,V_sp,s_sp,p_sp] = MPM_solver(CModel,CModel_paramet
 [nmomentum_si]  = Boundary_Dirichlet(nfbcx,nfbcy,fbcx,fbcy,nmomentum_si); % Boundary condition for nodal force
 
 %% Update solid particle velocity and position
-[v_ssp,x_sp,d_sp] = Update_Particle_Position(NODES,dt,CONNECT,N,spCount,nmass_si,nforce_si,nmomentum_si,x_spo,v_ssp,x_sp,d_sp);
+[v_ssp,x_sp,d_sp] = Update_Particle_Position(NODES,dt,CONNECT,N,spCount,nmass_si,nforce_si,nmomentum_si,x_spo,v_ssp,x_sp);
 % velocity particle: v_ssp
 % position particle: x_sp
 % displacement particle: d_sp
  
 %% Mapping nodal velocity back to node
-[nvelo_si] = Interpolate_velocity_back(NODES,nodeCount,spCount,CONNECT,m_sp,v_ssp,N,nmass_si);
+% [nvelo_si] = Interpolate_velocity_back(NODES,nodeCount,spCount,CONNECT,m_sp,v_ssp,N,nmass_si);
+nvelo_si = zeros(nodeCount,2);
+for n = 1:nodeCount
+    if nmass_si(n) == 0
+        continue
+    end
+    nvelo_si(n,:) = nmomentum_si(n,:)/nmass_si(n);
+end
+
+
 % Boundary condition
 [nvelo_si] = Boundary_Dirichlet(nfbcx,nfbcy,fbcx,fbcy,nvelo_si); % Boundary condition for nodal force
 
+% [~,dN,CONNECT,~,mspoints,NODES] = Compute_Interpolator_MPM(spCount,cellCount,x_sp,le,NN,LOC);
+
+
 %% Update effective stress
-[F_sp,V_sp,s_sp,p_sp] = Update_Stress(CModel,CModel_parameter,...
+[F_sp,V_sp,s_sp,p_sp,L_sp] = Update_Stress(CModel,CModel_parameter,...
     NODES,dt,cellCount,mspoints,CONNECT,nvelo_si,dN,...
     F_sp,V_spo,m_sp,s_sp,p_sp,V_sp);

@@ -15,7 +15,7 @@ traction             = zeros(nodeCount,2);                   % Nodal Traction
  for j=1:NODES(p)
      npid                           = CONNECT{p}(j);
      
-          if N{p}(j)==1
+          if N{p}(j)==0
          continue
           end
      
@@ -36,11 +36,11 @@ neforce(npid,:)         = neforce(npid,:) + b_sp(p,:)*m(p)*N{p}(j);
  traction(npid,1)       = traction(npid,1) + V_sp(p)*ptraction_sp(p,1)*N{p}(j)/le(1);
  traction(npid,2)       = traction(npid,2) + V_sp(p)*ptraction_sp(p,2)*N{p}(j)/le(2); 
  end 
+%  test = sum(m(1:p).*v_ssp(1:p,:)) - sum(nmomentum)
+ 
  end
  
- 
-
- 
+%  test = 1;
 % Notes on traction calculation
 
 % If traction / le: it means that the traction layer is equal to the cell
